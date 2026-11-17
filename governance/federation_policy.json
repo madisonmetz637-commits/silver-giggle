@@ -1,9 +1,9 @@
 {
-  "policy_name": "Lakeshore Readmission Consortium Charter",
+  "policy_name": "Nazarian Advising Consortium Charter",
   "policy_version": "1.0",
-  "coordinator": "Lakeshore General Health IT (rotates annually under the charter)",
-  "approved_by": "Consortium Steering Committee (one seat per member, one patient representative)",
-  "evaluation_set": "neutral_eval.csv: 400 consented, de-identified rows from each member's population, tagged by member, held by the coordinator for evaluation only",
+  "coordinator": "College advising office (rotates annually under the charter)",
+  "approved_by": "Consortium Steering Committee (one seat per department, one student representative)",
+  "evaluation_set": "neutral_eval.csv: 400 consented, de-identified rows from each department, tagged by member, held by the coordinator for evaluation only",
 
   "members": ["Accounting", "Business Analytics", "Marketing", "Real Estate"],
   "min_clients_per_round": 3,

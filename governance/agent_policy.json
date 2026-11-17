@@ -2,7 +2,7 @@
   "policy_name": "Nazarian Advising Consortium Analytics Agent Policy",
   "policy_version": "1.0",
   "system": "Nazarian advising consortium analytics agent team",
-  "owner": "Team [name]",
+  "owner": "Team 1",
   "approved_by": "[Governance and CI owner's name]",
   "purpose": "Answer descriptive, diagnostic, predictive and prescriptive questions about course failure across the four departments, and arrange advising and tutoring support for at-risk Accounting students. Decision support only.",
 
