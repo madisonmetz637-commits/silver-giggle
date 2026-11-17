@@ -1,32 +1,32 @@
 {
-  "policy_name": "Lakeshore Consortium Analytics Agent Policy",
+  "policy_name": "Nazarian Advising Consortium Analytics Agent Policy",
   "policy_version": "1.0",
-  "system": "Lakeshore consortium analytics agent team",
-  "owner": "Lakeshore General Health IT (team: replace with your team)",
-  "approved_by": "Consortium Steering Committee (team: replace with your governance owner)",
-  "purpose": "Answer descriptive, diagnostic, predictive and prescriptive questions about 30-day readmission across the consortium, and arrange follow-up resources for high-risk discharges at the home member. Decision support only.",
+  "system": "Nazarian advising consortium analytics agent team",
+  "owner": "Team [name]",
+  "approved_by": "[Governance and CI owner's name]",
+  "purpose": "Answer descriptive, diagnostic, predictive and prescriptive questions about course failure across the four departments, and arrange advising and tutoring support for at-risk Accounting students. Decision support only.",
 
   "allowed_tools": ["summarize_member", "segment_breakdown", "trend_by_month",
                     "compare_members", "rank_drivers",
                     "model_card_facts", "predict_record", "rank_records_by_risk",
-                    "recommend_action", "flag_chart_for_pharmacist", "schedule_followup_call", "request_home_visit"],
-  "approval_required": ["schedule_followup_call", "request_home_visit"],
-  "forbidden_for_any_agent": ["change_discharge_decision", "export_records"],
+                    "recommend_action", "refer_to_tutoring", "send_advising_outreach", "notify_instructor"],
+  "approval_required": ["send_advising_outreach", "notify_instructor"],
+  "forbidden_for_any_agent": ["drop_student_from_course", "export_records"],
 
-  "record_level_tools": ["predict_record", "rank_records_by_risk", "recommend_action", "flag_chart_for_pharmacist", "schedule_followup_call", "request_home_visit"],
+  "record_level_tools": ["predict_record", "rank_records_by_risk", "recommend_action", "refer_to_tutoring", "send_advising_outreach", "notify_instructor"],
   "max_tool_calls_per_task": 12,
   "max_records_per_task": 3,
   "data_scope": {
-    "aggregate_members": ["Lakeshore General", "St. Brigid", "Riverbend", "Pinecrest Rural", "Harbor Children's and Adults"],
-    "record_level_members": ["Lakeshore General"]
+    "aggregate_members": ["Accounting", "Business Analytics", "Marketing", "Real Estate"],
+    "record_level_members": ["Accounting"]
   },
 
   "model": {
     "path": "models/federated_model.json",
     "min_neutral_test_accuracy": 0.66,
     "high_risk_threshold": 0.5,
-    "allowed_uses": ["follow-up prioritization", "discharge planning resources"],
-    "prohibited_uses": ["coverage decisions", "pricing", "denying or delaying a discharge", "any use by a payer"]
+    "allowed_uses": ["advising outreach prioritization", "tutoring referral prioritization"],
+    "prohibited_uses": ["admissions decisions", "financial aid decisions", "grading decisions", "sharing records across departments", "labeling students to instructors"]
   },
 
   "logging": { "audit_log": "artifacts/agent_audit_log.jsonl", "log_arguments": true },
