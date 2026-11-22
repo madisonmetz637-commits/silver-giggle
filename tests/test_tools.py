@@ -26,3 +26,34 @@ def test_summarize_home_member_runs():
 def test_model_card_facts_available():
     r = T.call("model_card_facts", {})
     assert "neutral_test_accuracy" in r and r["gate_decision"] == "PASS"
+
+def test_top_segments_consortium_wide_runs():
+    r = T.call(
+        "top_segments_consortium_wide",
+        {"segment": "course_level"}
+    )
+
+    assert r["segment"] == "course_level"
+    assert "rates" in r
+    assert "lower_division" in r["rates"]
+    assert all("outcome_rate" in value for value in r["rates"].values())
+
+
+def test_segment_driver_runs():
+    r = T.call(
+        "segment_driver",
+        {
+            "member_a": "Marketing",
+            "member_b": "Accounting",
+            "segment": "course_level"
+        }
+    )
+
+    assert r["member_a"] == "Marketing"
+    assert r["member_b"] == "Accounting"
+    assert r["segment"] == "course_level"
+    assert len(r["differences"]) > 0
+
+    first_difference = r["differences"][0]
+    assert "segment_value" in first_difference
+    assert "difference" in first_difference

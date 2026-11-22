@@ -9,7 +9,8 @@
   "allowed_tools": ["summarize_member", "segment_breakdown", "trend_by_month",
                     "compare_members", "rank_drivers",
                     "model_card_facts", "predict_record", "rank_records_by_risk",
-                    "recommend_action", "refer_to_tutoring", "send_advising_outreach", "notify_instructor"],
+                    "recommend_action", "refer_to_tutoring", "send_advising_outreach", "notify_instructor",
+                    "top_segments_consortium_wide", "segment_driver"],
   "approval_required": ["send_advising_outreach", "notify_instructor"],
   "forbidden_for_any_agent": ["drop_student_from_course", "export_records"],
 

@@ -59,20 +59,50 @@ class ScriptedCoordinator:
         lenses = lenses_for(q)
         if any(k in q.lower() for k in ("own model", "charter", "fine-tune", "separate model")):
             lenses = [l for l in lenses if l != "prescriptive"] or ["diagnostic"]
-        members = members_in(q) or [config.HOME_MEMBER]
+        members = members_in(q) or (
+            [c.name for c in D.world().clients]
+            if "descriptive" in lenses
+         else [config.HOME_MEMBER]
+        )
         mm = re.search(r"month (\d{1,2})", q.lower())
         month = int(mm.group(1)) if mm else None
         home = config.HOME_MEMBER
         rids = record_ids_in(q)
         plan = []
         if "descriptive" in lenses:
-            for m in members[:2]:
+            for m in members:
                 plan.append(("summarize_member", {"member": m}))
-            seg = next((s for s in D.world().segments if s in q.lower()), None)
-            if seg:
-                plan.append(("segment_breakdown", {"member": members[0], "segment": seg}))
+
+            segment_terms = {
+                "course_level": ("course", "level"),
+                "modality": ("modality", "modalities", "modal")
+            }
+
+            for seg, terms in segment_terms.items():
+                if any(term in q.lower() for term in terms):
+                    for m in members:
+                        plan.append((
+                            "segment_breakdown",
+                            {"member": m, "segment": seg}
+                        ))
+
             if "month" in q.lower() or "trend" in q.lower():
-                plan.append(("trend_by_month", {"member": members[0]}))
+                for m in members:
+                    plan.append(("trend_by_month", {"member": m}))
+
+            if (
+                "across departments" in q.lower()
+                or "consortium-wide" in q.lower()
+            ):
+                segment = (
+                    "modality"
+                    if "modality" in q.lower()
+                    else "course_level"
+                )
+                plan.append((
+                    "top_segments_consortium_wide",
+                    {"segment": segment}
+                ))
         if "diagnostic" in lenses:
             if len(members) >= 2:
                 plan.append(("compare_members", {"member_a": members[0], "member_b": members[1]}))
@@ -80,6 +110,35 @@ class ScriptedCoordinator:
                 others = [c.name for c in D.world().clients if c.name != members[0]]
                 plan.append(("compare_members", {"member_a": members[0], "member_b": others[0]}))
             plan.append(("rank_drivers", {"member": members[0], "top_k": 5}))
+            if (
+                "by course level" in q.lower()
+                or "by modality" in q.lower()
+                or "segment" in q.lower()
+            ):
+                comparison_member = (
+                    members[1]
+                    if len(members) >= 2
+                    else next(
+                        c.name
+                        for c in D.world().clients
+                        if c.name != members[0]
+                    )
+                )
+
+                segment = (
+                    "modality"
+                    if "modality" in q.lower()
+                    else "course_level"
+                )
+
+                plan.append((
+                    "segment_driver",
+                    {
+                        "member_a": members[0],
+                        "member_b": comparison_member,
+                        "segment": segment
+                    }
+                ))
         if "predictive" in lenses or "prescriptive" in lenses:
             plan.append(("model_card_facts", {}))
             if rids:
@@ -134,6 +193,16 @@ class ScriptedCoordinator:
             elif t == "segment_breakdown":
                 top = list(r["rates"].items())[:2]
                 parts.append(f"By {r['segment']} at {r['member']}: " + ", ".join(f"{k} {v['outcome_rate']}" for k, v in top) + " (highest first).")
+            elif t == "top_segments_consortium_wide":
+                top = list(r["rates"].items())[:3]
+                parts.append(
+                    f"Consortium-wide {r['segment']}: "
+                    + ", ".join(
+                        f"{name} {values['outcome_rate']}"
+                        for name, values in top
+                    )
+                    + "."
+                )
             elif t == "trend_by_month":
                 parts.append(f"{r['member']} peaks in month {r['highest_month']} ({r['rate_by_month'][r['highest_month']]}) and is lowest in month {r['lowest_month']}.")
             elif t == "compare_members":
@@ -141,6 +210,17 @@ class ScriptedCoordinator:
                 parts.append(f"{r['member_a']['name']} rate {r['member_a']['outcome_rate']} vs {r['member_b']['name']} {r['member_b']['outcome_rate']}; largest feature difference {d['feature']} ({d['a_minus_b_sd']} sd). {r['reading']}")
             elif t == "rank_drivers":
                 parts.append(f"Drivers at {r['member']}: " + ", ".join(f"{d['feature']} ({d['correlation_with_outcome']:+.2f})" for d in r["drivers"][:3]) + ".")
+            elif t == "segment_driver":
+                top = r["differences"][:3]
+                parts.append(
+                    f"Segment differences by {r['segment']}: "
+                    + ", ".join(
+                        f"{item['segment_value']} "
+                        f"({item['difference']:+.3f})"
+                        for item in top
+                    )
+                    + "."
+                )
             elif t == "rank_records_by_risk":
                 parts.append(f"Top risk at {r['member']}: " + ", ".join(f"{x['record_id']} {x['probability']}" for x in r["records"]) + f"; high-risk share {r['high_risk_share']}.")
             elif t == "predict_record":
