@@ -1,6 +1,6 @@
 {
   "policy_name": "Nazarian Advising Consortium Charter",
-  "policy_version": "1.0",
+  "policy_version": "1.1",
   "coordinator": "College advising office (rotates annually under the charter)",
   "approved_by": "Consortium Steering Committee (one seat per department, one student representative)",
   "evaluation_set": "neutral_eval.csv: 400 consented, de-identified rows from each department, tagged by member, held by the coordinator for evaluation only",
