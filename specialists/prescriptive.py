@@ -16,25 +16,53 @@ def _actions():
     return D.world().schema["actions"]
 
 
-@T.tool("recommend_action", "Recommend the next step for one record from its risk band and the data card's action list. Does not act.",
+@T.tool("recommend_action", "Recommend tutoring or advising support using the student's risk level and main risk factors. Does not act.",
         T.obj_schema({"member": ("string", "member name"), "record_id": ("string", "record id")}), kind="analyze")
 def recommend_action(member, record_id):
     pred = predict_record(member, record_id)
     if "error" in pred:
         return pred
+
     acts = _actions()
     gated = [a["name"] for a in acts if a["kind"] == "approval"]
     logged = [a["name"] for a in acts if a["kind"] == "logged"]
+
+    drivers = pred["drivers"]
+    driver_names = [
+        d["feature"] if isinstance(d, dict) else str(d)
+        for d in drivers
+    ]
+
     if pred["band"] == "HIGH":
-        rec = gated[0] if gated else (logged[0] if logged else None)
+        if "assignments_missed_first_month" in driver_names:
+            rec = "send_advising_outreach"
+            reason = "High risk with missed assignments as a main factor."
+        else:
+            rec = "refer_to_tutoring"
+            reason = "High risk without missed assignments as a main factor."
     elif pred["band"] == "MEDIUM":
-        rec = logged[0] if logged else None
+        rec = "refer_to_tutoring"
+        reason = "Medium risk; tutoring may help."
     else:
         rec = None
-    return {"member": member, "record_id": record_id, "probability": pred["probability"], "band": pred["band"],
-            "recommended_action": rec or "no action", "needs_human": rec in gated, "drivers": pred["drivers"],
-            "rule": "HIGH: first gated action; MEDIUM: first logged action; LOW: none. Replace this rule with your team's."}
+        reason = "Low risk; no action needed."
 
+    allowed_actions = gated + logged
+    if rec not in allowed_actions:
+        rec = None
+        reason = "Recommended action is not available under the current action list."
+
+    return {
+        "member": member,
+        "record_id": record_id,
+        "probability": pred["probability"],
+        "band": pred["band"],
+        "recommended_action": rec or "no action",
+        "needs_human": rec in gated,
+        "drivers": drivers,
+        "reason": reason,
+        "rule": "Recommendations use both risk level and missed assignments."
+    }
 
 def _make_action(a):
     name, kind = a["name"], a["kind"]
