@@ -37,9 +37,34 @@ def short(obj, n=110):
     return s if len(s) <= n else s[: n - 3] + "..."
 
 
-def ask_human(name, args):
-    """Approval at the terminal. The human sees exactly what would happen."""
-    print(f"        HUMAN  approval needed for {name}({json.dumps(args)})")
+def ask_human(name, args, history=None):
+    """Show the advisor the student's risk factors before approval."""
+    print("\n        HUMAN APPROVAL REQUIRED")
+    print(f"        Proposed action: {name}")
+    print(f"        Department: {args.get('member', 'N/A')}")
+    print(f"        Student record: {args.get('record_id', 'N/A')}")
+
+    if history:
+        for entry in reversed(history):
+            if entry.get("tool") == "recommend_action":
+                result = entry.get("result", {})
+                if result.get("record_id") == args.get("record_id"):
+                    probability = result.get("probability")
+                    band = result.get("band")
+
+                    if probability is not None:
+                        print(f"        Failure risk: {probability:.1%} ({band})")
+
+                    print("        Main risk factors:")
+                    for driver in result.get("drivers", []):
+                        print(
+                            f"          - {driver.get('feature')}: "
+                            f"{driver.get('value')}"
+                        )
+
+                    print(f"        Reason: {result.get('reason', 'N/A')}")
+                    break
+
     while True:
         ans = input("        approve? [y/n] ").strip().lower()
         if ans in ("y", "yes"):
@@ -97,7 +122,7 @@ def run_task(task, planner, policy, approve="ask", max_steps=12, quiet=False):
                     print(f"        POLICY approval required: {d.reason}")
                 ok = {"auto": True, "deny": False}.get(approve)
                 if ok is None:
-                    ok = ask_human(name, args)
+                    ok = ask_human(name, args, history)
                 aud.event(task_id, "approval", tool=name, args=args, outcome="approved" if ok else "rejected", mode=approve)
                 if not ok:
                     entry.update(status="rejected", reason="human rejected the action")
