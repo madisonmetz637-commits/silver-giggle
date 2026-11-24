@@ -51,3 +51,130 @@ def trend_by_month(member):
     hi = max(rates, key=rates.get)
     lo = min(rates, key=rates.get)
     return {"member": member, "rate_by_month": rates, "highest_month": hi, "lowest_month": lo}
+@T.tool(
+    "top_segments_consortium_wide",
+    "Compare outcome rates across all consortium members for one segment.",
+    T.obj_schema({
+        "segment": (
+            "string",
+            "segment column such as course_level, modality, or month"
+        )
+    }),
+    kind="read"
+)
+def top_segments_consortium_wide(segment):
+    if segment not in D.world().segments:
+        return {
+            "error": (
+                f"{segment} is not a segment column; "
+                f"choose from {D.world().segments}"
+            )
+        }
+
+    label = D.label()
+    total = Counter()
+    positive = Counter()
+
+    for client in D.world().clients:
+        for row in client.rows:
+            value = row[segment]
+            total[value] += 1
+            positive[value] += int(row[label])
+
+    rates = {
+        value: {
+            "rows": total[value],
+            "outcome_rate": round(positive[value] / total[value], 3)
+        }
+        for value in sorted(
+            total,
+            key=lambda value: -positive[value] / total[value]
+        )
+    }
+
+    return {
+        "segment": segment,
+        "rates": rates,
+        "reading": (
+            "These are aggregate rates across all departments; "
+            "no individual student records are returned."
+        )
+    }
+@T.tool(
+    "segment_driver",
+    "Compare outcome rates by segment between two members.",
+    T.obj_schema({
+        "member_a": ("string", "first member"),
+        "member_b": ("string", "second member"),
+        "segment": (
+            "string",
+            "segment column such as course_level or modality"
+        )
+    }, required=["member_a", "member_b", "segment"]),
+    kind="analyze"
+)
+def segment_driver(member_a, member_b, segment):
+    if segment not in D.world().segments:
+        return {
+            "error": (
+                f"{segment} is not a segment column; "
+                f"choose from {D.world().segments}"
+            )
+        }
+
+    label = D.label()
+
+    def rates_for(member):
+        client = D.member(member)
+        totals = {}
+        positives = {}
+
+        for row in client.rows:
+            value = row[segment]
+            totals[value] = totals.get(value, 0) + 1
+            positives[value] = positives.get(value, 0) + int(row[label])
+
+        return {
+            value: {
+                "rows": totals[value],
+                "outcome_rate": round(
+                    positives[value] / totals[value],
+                    3
+                )
+            }
+            for value in totals
+        }
+
+    rates_a = rates_for(member_a)
+    rates_b = rates_for(member_b)
+
+    all_values = set(rates_a) | set(rates_b)
+    differences = []
+
+    for value in all_values:
+        rate_a = rates_a.get(value, {}).get("outcome_rate")
+        rate_b = rates_b.get(value, {}).get("outcome_rate")
+
+        if rate_a is not None and rate_b is not None:
+            differences.append({
+                "segment_value": value,
+                "member_a_rate": rate_a,
+                "member_b_rate": rate_b,
+                "difference": round(rate_a - rate_b, 3)
+            })
+
+    differences.sort(
+        key=lambda item: abs(item["difference"]),
+        reverse=True
+    )
+
+    return {
+        "member_a": member_a,
+        "member_b": member_b,
+        "segment": segment,
+        "differences": differences,
+        "reading": (
+            "The segment values with the largest absolute differences "
+            "show where the members differ most."
+        )
+    }
