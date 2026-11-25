@@ -1,4 +1,4 @@
-# Model card: <your consortium>, federated <outcome> model
+# Model card: Nazarian Advising Consortium, federated failed_course model
 
 Start from artifacts/federated_model_card.md (written by run_federation.py) and add what the generator cannot know.
 
@@ -36,16 +36,35 @@ As we can see, increasing the noise improved privacy however it reduced accuracy
 
 ## Performance
 | Member | Local only | FedAvg | Centralized | Gain |
-| Accounting | 0.748 | 0.738 | 0.750 | -0.010 |
-| Business Analytics | 0.748 | 0.760 | 0.752 | +0.012 |
-| Marketing | 0.743 | 0.748 | 0.752 | +0.005 |
-| Real Estate | 0.745 | 0.750 | 0.782 | +0.005 |
+|---|---|---|---|---|
+| Accounting | 0.740 | 0.720 | 0.745 | -0.020 |
+| Business Analytics | 0.755 | 0.735 | 0.743 | -0.020 |
+| Marketing | 0.735 | 0.738 | 0.738 | +0.003 |
+| Real Estate | 0.745 | 0.767 | 0.790 | +0.022 |
 
-The overall FedAvg accuracy was 0.749, rather than 0.759 for the centralized model.
+Overall FedAvg accuracy is 0.740, against 0.754 for the centralized model (source: `python run_federation.py --baselines`, charter v1.1, after the leakage controls below). Real Estate, the smallest department, gains the most from federating (+0.022); Accounting and Business Analytics each give up 0.020, the price the large departments pay for a shared model that also serves the small one.
 
 The member difference that was the most important was between Accounting and Real Estate. Accounting has 2,200 records and had a failure rate of 0.295, while Real Estate has only 140 records and had a failure rate of 0.221. between these two, the largest feature difference was commute time, which differed by 0.12 standard deviations.
 
+**Driver signs (the concept difference).** Running rank_drivers at each department shows that hours_worked_per_week goes with failing at Accounting (+0.08), Business Analytics (+0.10) and Marketing (+0.09), but with passing at Real Estate (-0.12). In Real Estate, the students who work are the industry insiders who do best, so the same feature means the opposite there. A single federated model learns the majority pattern and treats working hours as a risk at Real Estate, where it signals the opposite. Therefore the charter keeps one federated model with per-department accuracy reporting and a per-member floor, and lists fine-tuning or a separate model for Real Estate as an open decision for the steering committee. (Source: `python coordinator.py --question "Working hours predict failure everywhere except Real Estate. What does the charter owe that department?"`)
+
 The original 0.62 minimum member-accuracy floor was passed with the model. When I raised the floor to 0.80, the gate was blocked. This was because Accounting’s accuracy was only 0.7375 and did not meet the floor level. I did not use fine-tuning or create a separate model. Instead of this, I kept one federated model that required separate performance reporting for each department while also keeping the minimum member accuracy floor at 0.62 because the model was blocked by the stricter 0.80 floor.
+
+## Data leakage controls
+Students are scored at the end of week 4 of the term, so the model may only use information that is fully known by then.
+
+| Feature | Known by week 4? | Decision |
+|---|---|---|
+| prior_gpa, prereq_grade_points, transfer_student, first_generation, repeat_attempt, units_this_term, commute_minutes, hours_worked_per_week | Yes, at enrollment | Used |
+| lms_logins_first_3_weeks | Yes, by week 3 | Used |
+| assignments_missed_first_month | Yes, complete at the end of week 4 | Used; scoring point set to end of week 4 |
+| met_advisor_this_term | No: covers the whole term, including meetings after the alert that our own outreach causes | Excluded (`config.py`, EXCLUDED_FEATURES) |
+
+Excluding met_advisor_this_term cost 0.009 in overall FedAvg accuracy (0.749 to 0.740). By department: Accounting -0.018, Business Analytics -0.025, Marketing -0.010, Real Estate +0.017. Therefore the charter accepts a slightly less accurate model that only uses information available on the day it predicts. The loader also stops if the label, the student id or the month is ever listed as a feature (`fl/consortium.py`, apply_leakage_controls).
+
+Other checks: no evaluation row appears in any training file (0 of 1,600), there are no duplicate students, and features are standardized with the data card's reference means and sds, not pooled statistics. The descriptive tools do not report a failure rate for any group under 10 students (`config.py`, MIN_CELL_SIZE), because Real Estate has months with as few as 7 students.
+
+Limitation: the neutral evaluation split is random, not by time. A stricter test would train on earlier months and test on later ones.
 
 ## Limitations and fairness
 Per-member evaluation only unless you evaluated segments: did you? Say what you found.
