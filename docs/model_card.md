@@ -9,11 +9,12 @@ This model will predict if a student will or will not fail a course. The preidct
 
 
 ## Members and data
-| Member | Rows | Base rate | How this member differs (your finding) |
-| Accounting | 2,200 | 0.295 | Is the largest department. The FedAvg accuracy decreased compared with its local only model |
-| Business Analytics | 900 | 0.303 | Is an evening program The FedAvg accuracy increased by 0.012 |
-| Marketing | 1,300 | 0.305 | There is a new curriculum and it also has the highest failure rate. The FedAvg accuracy increased by 0.005 |
-| Real Estate | 140 | 0.221 | Is the smallest department and has the lowest failure rate. The FedAvg accuracy increased by 0.005 |
+| Member | Rows | Base rate | How this member differs (our finding) |
+|---|---|---|---|
+| Accounting | 2,200 | 0.295 | Largest department. Loses 0.020 from FedAvg (local 0.740, FedAvg 0.720) |
+| Business Analytics | 900 | 0.303 | Evening program; students work about 7 more hours a week. Loses 0.020 from FedAvg |
+| Marketing | 1,300 | 0.305 | New curriculum; highest failure rate. Gains 0.003 from FedAvg |
+| Real Estate | 140 | 0.221 | Smallest department, lowest failure rate, and hours worked has the opposite sign. Gains the most from FedAvg (+0.022) |
 
 The neutral evaluation data set contained 1,600 records, with 400 records from each department.
 
@@ -30,6 +31,8 @@ The following results were produced by the privacy experiment:
 | 0.0 | 0.761 | 0.750 |
 | 0.3 | 0.749 | 0.738 |
 | 1.0 | 0.681 | 0.657 |
+
+(Measured before the leakage controls, with all 12 features; rerun before the final report.)
 
 As we can see, increasing the noise improved privacy however it reduced accuracy. A noise multiplier of 0.3 reduced overall accuracy by roughly 0.012 compared with no noise. On the otherhand, a multiplier of 1.0 reduced accuracy by roughly 0.08.
 
@@ -48,7 +51,7 @@ The member difference that was the most important was between Accounting and Rea
 
 **Driver signs (the concept difference).** Running rank_drivers at each department shows that hours_worked_per_week goes with failing at Accounting (+0.08), Business Analytics (+0.10) and Marketing (+0.09), but with passing at Real Estate (-0.12). In Real Estate, the students who work are the industry insiders who do best, so the same feature means the opposite there. A single federated model learns the majority pattern and treats working hours as a risk at Real Estate, where it signals the opposite. Therefore the charter keeps one federated model with per-department accuracy reporting and a per-member floor, and lists fine-tuning or a separate model for Real Estate as an open decision for the steering committee. (Source: `python coordinator.py --question "Working hours predict failure everywhere except Real Estate. What does the charter owe that department?"`)
 
-The original 0.62 minimum member-accuracy floor was passed with the model. When I raised the floor to 0.80, the gate was blocked. This was because Accounting’s accuracy was only 0.7375 and did not meet the floor level. I did not use fine-tuning or create a separate model. Instead of this, I kept one federated model that required separate performance reporting for each department while also keeping the minimum member accuracy floor at 0.62 because the model was blocked by the stricter 0.80 floor.
+The original 0.62 minimum member-accuracy floor was passed with the model. When I raised the floor to 0.80, the gate was blocked. This was because Accounting’s accuracy was only 0.7375 at the time (0.720 after the leakage controls) and did not meet the floor level. I did not use fine-tuning or create a separate model. Instead of this, I kept one federated model that required separate performance reporting for each department while also keeping the minimum member accuracy floor at 0.62 because the model was blocked by the stricter 0.80 floor.
 
 ## Data leakage controls
 Students are scored at the end of week 4 of the term, so the model may only use information that is fully known by then.
@@ -70,5 +73,5 @@ Limitation: the neutral evaluation split is random, not by time. A stricter test
 Per-member evaluation only unless you evaluated segments: did you? Say what you found.
 
 The evaluation measured performance separately for all four departments, however it did not evaluate the fairness across smaller segments including course level, course modality, or student characteristics within each department.
-Looking at the results, we see that FedAvg did not really help every department equally.Accounting lost 0.010 compared to the local-only model, whereas Business Analytics gained 0.012. Looking only at the overall accuracy would not show how different each department is. This means that the fianl charter requires accuracy to be evaluated seperately for each department.
+Looking at the results, we see that FedAvg did not really help every department equally.Accounting and Business Analytics each lost 0.020 compared to their local-only models, whereas Real Estate gained 0.022. Looking only at the overall accuracy would not show how different each department is. This means that the fianl charter requires accuracy to be evaluated seperately for each department.
 There was also fewer records in Real Estate compared to other departments. Because of this, the accuracy may be less stable and with a lower failure rate, it shows the different student population. Future testing should examine the course level, course format, hours worked, and other student groups individually.
