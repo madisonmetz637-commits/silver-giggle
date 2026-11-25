@@ -7,7 +7,7 @@
   "purpose": "Answer descriptive, diagnostic, predictive and prescriptive questions about course failure across the four departments, and arrange advising and tutoring support for at-risk Accounting students. Decision support only.",
 
   "allowed_tools": ["summarize_member", "segment_breakdown", "trend_by_month",
-                    "compare_members", "rank_drivers",
+                    "compare_members",
                     "model_card_facts", "predict_record", "rank_records_by_risk",
                     "recommend_action", "refer_to_tutoring", "send_advising_outreach", "notify_instructor",
                     "top_segments_consortium_wide", "segment_driver"],
