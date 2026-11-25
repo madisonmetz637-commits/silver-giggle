@@ -1,6 +1,6 @@
 {
   "policy_name": "Nazarian Advising Consortium Analytics Agent Policy",
-  "policy_version": "1.1",
+  "policy_version": "1.2",
   "system": "Nazarian advising consortium analytics agent team",
   "owner": "Team 1",
   "approved_by": "[Governance and CI owner's name]",
@@ -15,7 +15,7 @@
   "forbidden_for_any_agent": ["drop_student_from_course", "export_records"],
 
   "record_level_tools": ["predict_record", "rank_records_by_risk", "recommend_action", "refer_to_tutoring", "send_advising_outreach", "notify_instructor"],
-  "max_tool_calls_per_task": 12,
+  "max_tool_calls_per_task": 10,
   "max_records_per_task": 3,
   "data_scope": {
     "aggregate_members": ["Accounting", "Business Analytics", "Marketing", "Real Estate"],
@@ -24,7 +24,7 @@
 
   "model": {
     "path": "models/federated_model.json",
-    "min_neutral_test_accuracy": 0.66,
+    "min_neutral_test_accuracy": 0.70,
     "high_risk_threshold": 0.5,
     "allowed_uses": ["advising outreach prioritization", "tutoring referral prioritization"],
     "prohibited_uses": ["admissions decisions", "financial aid decisions", "grading decisions", "sharing records across departments", "labeling students to instructors"]
