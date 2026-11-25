@@ -64,9 +64,13 @@ class ScriptedCoordinator:
                 "charter",
                 "fine-tune",
                 "separate model",
-                "working hours"
+                "working hours",
+                "gain from the federation",
+                "benefit from the federat",
             )
         )
+        # a governance question may also ask which students are at risk: rank only the home member's students
+        asks_students = any(k in q.lower() for k in ("which enrolled students", "which students", "students are at risk"))
 
         if governance_question:
             lenses = ["diagnostic", "predictive"]
@@ -81,13 +85,16 @@ class ScriptedCoordinator:
         rids = record_ids_in(q)
         plan = []
         if "descriptive" in lenses:
-            for m in members:
-                plan.append(("summarize_member", {"member": m}))
-
             segment_terms = {
                 "course_level": ("course", "level"),
                 "modality": ("modality", "modalities", "modal")
             }
+            # segment_breakdown already reports rows and rates, so when several departments AND both segments are
+            # asked for, skip the per-department summary (4 summaries + 8 breakdowns would use the whole 12-call budget)
+            n_segments = sum(any(term in q.lower() for term in terms) for terms in segment_terms.values())
+            if not (n_segments >= 2 and len(members) > 1):
+                for m in members:
+                    plan.append(("summarize_member", {"member": m}))
 
             for seg, terms in segment_terms.items():
                 if any(term in q.lower() for term in terms):
@@ -153,6 +160,8 @@ class ScriptedCoordinator:
         if "predictive" in lenses or "prescriptive" in lenses:
             plan.append(("model_card_facts", {}))
 
+            if governance_question and asks_students:
+                plan.append(("rank_records_by_risk", {"member": config.HOME_MEMBER, "top_k": 3}))
             if not governance_question:
                 if rids:
                     for rid in rids[:3]:
@@ -217,7 +226,12 @@ class ScriptedCoordinator:
                     + "."
                 )
             elif t == "trend_by_month":
-                parts.append(f"{r['member']} peaks in month {r['highest_month']} ({r['rate_by_month'][r['highest_month']]}) and is lowest in month {r['lowest_month']}.")
+                if "highest_month" in r:
+                    parts.append(f"{r['member']} peaks in month {r['highest_month']} ({r['rate_by_month'][r['highest_month']]}) and is lowest in month {r['lowest_month']}.")
+                else:
+                    parts.append(f"{r['member']}: {r['note']}.")
+                if r.get("suppressed_months"):
+                    parts.append(f"Months {r['suppressed_months']} not reported (fewer than {r['min_cell_size']} students).")
             elif t == "compare_members":
                 d = r["largest_feature_differences_sd"][0]
                 parts.append(f"{r['member_a']['name']} rate {r['member_a']['outcome_rate']} vs {r['member_b']['name']} {r['member_b']['outcome_rate']}; largest feature difference {d['feature']} ({d['a_minus_b_sd']} sd). {r['reading']}")

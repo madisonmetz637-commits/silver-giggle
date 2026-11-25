@@ -8,6 +8,16 @@ from collections import Counter, defaultdict
 
 from agent import tools as T
 from . import _data as D
+import config  # noqa: E402  (MIN_CELL_SIZE)
+
+
+def _rates(tot, pos):
+    """Outcome rate per group, highest first. Groups smaller than config.MIN_CELL_SIZE are suppressed (no rate)."""
+    n_min = config.MIN_CELL_SIZE
+    shown = sorted((k for k in tot if tot[k] >= n_min), key=lambda k: -pos[k] / tot[k])
+    out = {k: {"rows": tot[k], "outcome_rate": round(pos[k] / tot[k], 3)} for k in shown}
+    out.update({k: {"rows": f"<{n_min}", "outcome_rate": None, "suppressed": True} for k in tot if tot[k] < n_min})
+    return out
 
 
 @T.tool("summarize_member", "Row count, outcome rate and segment mix for one member. Aggregate only.",
@@ -33,8 +43,7 @@ def segment_breakdown(member, segment):
     for r in c.rows:
         tot[r[segment]] += 1
         pos[r[segment]] += int(r[lab])
-    return {"member": member, "segment": segment,
-            "rates": {k: {"rows": tot[k], "outcome_rate": round(pos[k] / tot[k], 3)} for k in sorted(tot, key=lambda k: -pos[k] / tot[k])}}
+    return {"member": member, "segment": segment, "rates": _rates(tot, pos), "min_cell_size": config.MIN_CELL_SIZE}
 
 
 @T.tool("trend_by_month", "Outcome rate by month (1 to 12) for one member.",
@@ -47,10 +56,17 @@ def trend_by_month(member):
         m = int(r["month"])
         tot[m] += 1
         pos[m] += int(r[lab])
-    rates = {m: round(pos[m] / tot[m], 3) for m in sorted(tot)}
-    hi = max(rates, key=rates.get)
-    lo = min(rates, key=rates.get)
-    return {"member": member, "rate_by_month": rates, "highest_month": hi, "lowest_month": lo}
+    n_min = config.MIN_CELL_SIZE
+    rates = {m: (round(pos[m] / tot[m], 3) if tot[m] >= n_min else None) for m in sorted(tot)}
+    shown = {m: v for m, v in rates.items() if v is not None}
+    suppressed = [m for m, v in rates.items() if v is None]
+    if not shown:
+        return {"member": member, "rate_by_month": rates, "suppressed_months": suppressed, "min_cell_size": n_min,
+                "note": f"every month has fewer than {n_min} rows; no monthly rate can be reported"}
+    hi = max(shown, key=shown.get)
+    lo = min(shown, key=shown.get)
+    return {"member": member, "rate_by_month": rates, "highest_month": hi, "lowest_month": lo,
+            "suppressed_months": suppressed, "min_cell_size": n_min}
 @T.tool(
     "top_segments_consortium_wide",
     "Compare outcome rates across all consortium members for one segment.",
@@ -81,16 +97,7 @@ def top_segments_consortium_wide(segment):
             total[value] += 1
             positive[value] += int(row[label])
 
-    rates = {
-        value: {
-            "rows": total[value],
-            "outcome_rate": round(positive[value] / total[value], 3)
-        }
-        for value in sorted(
-            total,
-            key=lambda value: -positive[value] / total[value]
-        )
-    }
+    rates = _rates(total, positive)
 
     return {
         "segment": segment,
@@ -134,16 +141,7 @@ def segment_driver(member_a, member_b, segment):
             totals[value] = totals.get(value, 0) + 1
             positives[value] = positives.get(value, 0) + int(row[label])
 
-        return {
-            value: {
-                "rows": totals[value],
-                "outcome_rate": round(
-                    positives[value] / totals[value],
-                    3
-                )
-            }
-            for value in totals
-        }
+        return {k: v for k, v in _rates(totals, positives).items() if not v.get("suppressed")}
 
     rates_a = rates_for(member_a)
     rates_b = rates_for(member_b)

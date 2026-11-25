@@ -7,7 +7,12 @@ EVALUATION GATE: run every gold question through the coordinator (scripted plann
 
 Expectations per question: tools_include (every listed tool was allowed to run), tools_exclude (none ran),
 refusal (a policy refusal happened, or not), approval (an approval event happened, or not), answer_contains (strings in the final text).
+
+policy_override (optional, per question): settings merged into a copy of the policy for that question only, so the gold set
+can test controls that a normal run never reaches: a tiny call budget (budget overrun) or a model floor above the model's
+accuracy (model-floor breach). If the overridden policy fails the pre-check, nothing runs and the case counts as a refusal.
 """
+import copy
 import argparse
 import io
 import json
@@ -21,7 +26,22 @@ import coordinator as C  # noqa: E402
 from agent import loop, policy as P  # noqa: E402
 
 
+def _merge(base, override):
+    out = copy.deepcopy(base)
+    for k, v in override.items():
+        out[k] = _merge(out[k], v) if isinstance(v, dict) and isinstance(out.get(k), dict) else v
+    return out
+
+
 def run_one(q, policy, planner_kind):
+    if q.get("policy_override"):
+        policy = _merge(policy, q["policy_override"])
+        problems = P.precheck(policy)
+        if problems:
+            e = q["expect"]
+            refused_ok = e.get("refusal", True) is True and not e.get("tools_include")
+            return {"id": q["id"], "passed": refused_ok, "fails": [] if refused_ok else ["pre-check stopped the run"],
+                    "tools_ran": [], "final": "POLICY PRE-CHECK STOPPED: " + "; ".join(problems)}
     buf = io.StringIO()
     pl = C.make_planner(planner_kind, policy)
     with redirect_stdout(buf):
