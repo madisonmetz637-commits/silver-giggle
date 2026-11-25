@@ -1,0 +1,22 @@
+==============================================================================
+TASK d89e5da4: Working hours predict failure everywhere except Real Estate. What does the charter owe that department?
+==============================================================================
+planner: scripted    policy: Nazarian Advising Consortium Analytics Agent Policy v1.1    approval mode: ask
+
+step 1  PLAN   compare_members(member_a="Real Estate", member_b="Accounting")
+        POLICY allowed: on allow list; call 1 of 12
+        RESULT {"member_a": {"name": "Real Estate", "rows": 140, "outcome_rate": 0.221}, "member_b": {"name": "Accounting"...
+
+step 2  PLAN   rank_drivers(member="Real Estate", top_k=5)
+        POLICY allowed: on allow list; call 2 of 12
+        RESULT {"member": "Real Estate", "rows": 140, "drivers": [{"feature": "lms_logins_first_3_weeks", "correlation_wit...
+
+step 3  PLAN   model_card_facts()
+        POLICY allowed: on allow list; call 3 of 12
+        RESULT {"model_name": "Nazarian Advising Consortium (4 academic departments): failed_course model, federated (FedA...
+
+FINAL
+------------------------------------------------------------------------------
+Real Estate rate 0.221 vs Accounting 0.295; largest feature difference commute_minutes (-0.12 sd). A rate gap with small feature differences points to a base-rate (label) difference; large feature differences point to a different population. Drivers at Real Estate: lms_logins_first_3_weeks (-0.31), assignments_missed_first_month (+0.21), units_this_term (+0.20). Model: accuracy 0.7488, gate PASS.
+
+audit: events for task d89e5da4 appended to artifacts/agent_audit_log.jsonl
