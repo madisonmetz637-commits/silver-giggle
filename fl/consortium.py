@@ -87,11 +87,41 @@ def load_schema(name):
         return json.load(f)
 
 
+# Columns that must never be model features: they are the answer, an identifier, or a time stamp.
+NEVER_FEATURES = {"month", "source_member"}
+
+
+def excluded_features():
+    """The leakage exclusion list from config.py (feature name -> reason). Empty if none is set."""
+    try:
+        import config
+        return dict(getattr(config, "EXCLUDED_FEATURES", {}))
+    except ImportError:
+        return {}
+
+
+def apply_leakage_controls(schema):
+    """Remove excluded features from the schema before anything is standardized, trained or scored.
+    Stops if an excluded name is misspelled, or if the label, the id or a time column is listed as a feature."""
+    names = [f["name"] for f in schema["features"]]
+    excl = excluded_features()
+    unknown = [k for k in excl if k not in names]
+    if unknown:
+        raise SystemExit(f"LEAKAGE CHECK STOPPED: EXCLUDED_FEATURES names {unknown}, which are not features in schema.json")
+    banned = NEVER_FEATURES | {schema["label"], schema["id_column"]}
+    bad = [n for n in names if n in banned]
+    if bad:
+        raise SystemExit(f"LEAKAGE CHECK STOPPED: {bad} must never be a model feature (label, id or time column)")
+    schema["features"] = [f for f in schema["features"] if f["name"] not in excl]
+    schema["excluded_features"] = excl
+    return schema
+
+
 def load_world(name):
     folder = DATA / name
     if not folder.exists():
         raise SystemExit(f"no consortium folder {folder}; choices: {sorted(p.name for p in DATA.iterdir() if p.is_dir())}")
-    schema = load_schema(name)
+    schema = apply_leakage_controls(load_schema(name))
     label = schema["label"]
     clients = []
     for m in schema["members"]:
